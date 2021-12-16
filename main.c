@@ -358,6 +358,7 @@ float tokenize(unsigned int i, unsigned int stop) {
 	}
 
 	//printtoken(&token, tokenlen);
+	free(token);
 	return token[0].value;
 
 }
@@ -365,8 +366,10 @@ float tokenize(unsigned int i, unsigned int stop) {
 int main(int argc, char *argv[]) {
 
 	if (argc <= 1) {
-		printf("Error: No argument!\n");
-		return 1;
+		printf("Calculation: ");
+		scanf("%m[^\n]", &text);
+		goto tokenize;
+		//printf("Error: No argument!\n");
 	}
 
 	// get size of args
@@ -403,6 +406,7 @@ int main(int argc, char *argv[]) {
 	text[textlen] = '\0';
 
 	// tokenize time :P
+	tokenize:
 
 	printf("Result: %f\n", tokenize(0, textlen));
 
