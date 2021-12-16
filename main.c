@@ -18,7 +18,8 @@ enum tokenoperator {
 	Exp,
 	Sin,
 	Cos,
-	Tan
+	Tan,
+	Factorial
 };
 
 struct token {
@@ -79,6 +80,12 @@ void printtoken(struct token * *token, unsigned int tokenlen) {
 			 		putchar('t'); 
 					putchar('a'); 
 					putchar('n');
+					break;
+				case Factorial:
+					putchar('f'); 
+					putchar('a'); 
+					putchar('c');
+					putchar('t');
 					break;
 				default:
 					putchar('?');
@@ -205,6 +212,18 @@ float tokenize(unsigned int i, unsigned int stop) {
 			if (text[i] != 'n' || i > stop) goto tokenizeinvalidsymbol;
 			token[tokenlen].type  = Function;
 			token[tokenlen].value = Tan;
+		} else if (text[i] == 'f') {
+			i++;
+			if (text[i] != 'a' || i > stop) goto tokenizeinvalidsymbol;
+			i++;
+			if (text[i] != 'c' || i > stop) goto tokenizeinvalidsymbol;
+			i++;
+			if (text[i] != 't' || i > stop) goto tokenizeinvalidsymbol;
+			token[tokenlen].type  = Function;
+			token[tokenlen].value = Factorial;
+		} else if (text[i] == '!') {
+			token[tokenlen].type  = Function;
+			token[tokenlen].value = Factorial;
 		} else {
 			tokenizeinvalidsymbol:
 				printf("Warn: Invalid symbol, ignoring");
@@ -236,6 +255,12 @@ float tokenize(unsigned int i, unsigned int stop) {
 				break;
 			case Tan:
 				token[i].value = tan(token[i + 1].value);
+				break;
+			case Factorial:
+				token[i].value = 1;
+				for (m = 0; m < token[i + 1].value; ++i) {
+					token[i].value *= m;
+				}
 				break;
 			default:
 				printf("Error: Unknown function (code is broken)");
