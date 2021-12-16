@@ -258,7 +258,7 @@ float tokenize(unsigned int i, unsigned int stop) {
 				break;
 			case Factorial:
 				token[i].value = 1;
-				for (m = 0; m < token[i + 1].value; ++i) {
+				for (m = 1; m < token[i + 1].value; ++m) {
 					token[i].value *= m;
 				}
 				break;
@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
 	for (int i = 1; i < argc; ++i) {
 
 		while (argv[i][m] != '\0') {
-			if (argv[i][m] != ' ') {
+			if (argv[i][m] != ' ' && argv[i][m] != '\\') {
 				++textlen;
 			}
 			++m;
@@ -389,7 +389,7 @@ int main(int argc, char *argv[]) {
 	for (int i = 1; i < argc; ++i) {
 	
 		while (argv[i][m] != '\0') {
-			if (argv[i][m] != ' ') {
+			if (argv[i][m] != ' ' && argv[i][m] != '\\') {
 
 				text[j] = argv[i][m];
 				++j;
