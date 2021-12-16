@@ -138,12 +138,14 @@ float tokenize(unsigned int i, unsigned int stop) {
 				exponent *= 10;
 			}
 
-			while ((exponent /= 10) != 1) i++;
-			++i; // return to back of number to continue tokenization
+			while ((exponent /= 10) != 1) ++i;
+			++i;
 
-			if (text[i] == '.') { tokenizedecimalplace:
-
+			if (text[i + 1] == '.') { 
 				++i;
+				tokenizedecimalplace:
+				++i;
+				
 				exponent = 0.1;
 
 				while (i < stop && text[i] >= '0' && text[i] <= '9') {
@@ -152,8 +154,7 @@ float tokenize(unsigned int i, unsigned int stop) {
 						printf("Warn: too many decimal places, ignoring");
 						continue;
 					}
-					token[tokenlen].value += (float)((text[i] - '0') * exponent);
-					printf("value: %f")
+					token[tokenlen].value = (float)(token[tokenlen].value) + (float)((text[i] - '0') * exponent);
 					++i;
 					exponent *= 0.1;
 				};
@@ -161,6 +162,8 @@ float tokenize(unsigned int i, unsigned int stop) {
 
 				
 			}
+
+			//++i; // return to back of number to continue tokenization
 			
 		} else if (text[i] == '(') {
 
