@@ -109,6 +109,8 @@ float tokenize(unsigned int i, unsigned int stop) {
 	// note iterator for token is tokenlen which gets increased as iterates
 	while (i < stop) {
 
+		// printf("Char %d: %c\n", i, text[i]);
+
 		if (text[i] == '+') {
 			token[tokenlen].type  = Operator;
 			token[tokenlen].value = Add; 
@@ -128,7 +130,6 @@ float tokenize(unsigned int i, unsigned int stop) {
 			token[tokenlen].type  = Operator;
 			token[tokenlen].value = Exp; 
 		} else if ((text[i] >= '0' && text[i] <= '9') || text[i] == '.') { // if digit
-
 
 			token[tokenlen].type  = Number;
 			token[tokenlen].value = 0;
@@ -166,7 +167,6 @@ float tokenize(unsigned int i, unsigned int stop) {
 					exponent *= 0.1;
 				};
 				--i;
-
 				
 			}
 
@@ -224,9 +224,10 @@ float tokenize(unsigned int i, unsigned int stop) {
 		} else if (text[i] == '!') {
 			token[tokenlen].type  = Function;
 			token[tokenlen].value = Factorial;
-		} else {
-			tokenizeinvalidsymbol:
-				printf("Warn: Invalid symbol, ignoring");
+		} else { tokenizeinvalidsymbol:
+			printf("Warn: Invalid symbol, ignoring\n");
+			++i;
+			continue;
 		}
 		
 		++tokenlen;
@@ -235,7 +236,8 @@ float tokenize(unsigned int i, unsigned int stop) {
 		
 	}
 	
-	// Time to calculate (with bodmas) ^, %, *, /, +, -
+	// Time to calculate (with bodmas) functions, ^, %, *, /, +, -
+	printtoken(&token, tokenlen);
 
 	//find sin, cos, tan (functions)
 	for (i = 0; i < tokenlen; ++i) {
@@ -272,7 +274,6 @@ float tokenize(unsigned int i, unsigned int stop) {
 		tokenlen -= 1;
 		i -= 1;
 		token = realloc(token, (tokenlen + 1) * sizeof(struct token));
-		printtoken(&token, tokenlen);
 	}
 
 	//find ^
@@ -358,22 +359,50 @@ float tokenize(unsigned int i, unsigned int stop) {
 	}
 
 	//printtoken(&token, tokenlen);
+
+	// free & return
+	
+	if (tokenlen == 0) {
+		free(token);
+		return 0;
+	}
+
+	exponent = token[0].value;
 	free(token);
-	return token[0].value;
+	printf("%f\n", exponent);
+	return exponent;
 
 }
 
 int main(int argc, char *argv[]) {
 
+	unsigned int j = 0;
+	unsigned int m = 0;
+
 	if (argc <= 1) {
+		
+		char *temptext = malloc(100 * sizeof(char));
+
 		printf("Calculation: ");
-		scanf("%m[^\n]", &text);
+		fgets(temptext, 100, stdin);
+		
+		for (unsigned int i = 0; temptext[i] != '\n'; ++i) textlen++; // get size of string
+		text = malloc(textlen * sizeof(char));
+
+		// m is iterator for text (read m = 0)
+		for (unsigned int i = 0; i < textlen; ++i) {
+			if (temptext[i] != ' ' && temptext[i] != '\\') {
+				text[m] = temptext[i];
+				++m;
+			}
+		}
+		free(temptext);
+
 		goto tokenize;
 		//printf("Error: No argument!\n");
 	}
 
 	// get size of args
-	unsigned int m = 0;
 	for (int i = 1; i < argc; ++i) {
 
 		while (argv[i][m] != '\0') {
@@ -388,7 +417,6 @@ int main(int argc, char *argv[]) {
 
 	// put all args into text var
 	text = malloc(textlen * sizeof(char));
-	unsigned int j = 0;
 	for (int i = 1; i < argc; ++i) {
 	
 		while (argv[i][m] != '\0') {
@@ -403,10 +431,13 @@ int main(int argc, char *argv[]) {
 
 		m = 0;
 	}
+	
+	tokenize:
 	text[textlen] = '\0';
+	printf("'%s'\n", text);
 
 	// tokenize time :P
-	tokenize:
+	
 
 	printf("Result: %f\n", tokenize(0, textlen));
 
