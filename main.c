@@ -148,10 +148,10 @@ float tokenize(unsigned int i, unsigned int stop) {
 				
 				exponent = 0.1;
 
-				while (i < stop && text[i] >= '0' && text[i] <= '9') {
-					printf("A: %d, %c, %f\n", i, text[i], (float)(text[i] - '0') * exponent);
+				while ((text[i] >= '0' && text[i] <= '9') || text[i] == '.') {
 					if (text[i] == '.') {
 						printf("Warn: too many decimal places, ignoring");
+						++i;
 						continue;
 					}
 					token[tokenlen].value = (float)(token[tokenlen].value) + (float)((text[i] - '0') * exponent);
@@ -163,15 +163,12 @@ float tokenize(unsigned int i, unsigned int stop) {
 				
 			}
 
-			//++i; // return to back of number to continue tokenization
-			
 		} else if (text[i] == '(') {
 
 			++i;
 			bracketcount = 1;
 			bracketstart = i;
 			while (bracketcount != 0) {
-				printf("i: %d %c %d\n", i, text[i], bracketcount);
 				if (i >= textlen) {
 					printf("Warn: Missing ')', assuming\n");
 					++i;
@@ -220,7 +217,6 @@ float tokenize(unsigned int i, unsigned int stop) {
 	}
 	
 	// Time to calculate (with bodmas) ^, %, *, /, +, -
-		
 
 	//find sin, cos, tan (functions)
 	for (i = 0; i < tokenlen; ++i) {
@@ -234,7 +230,6 @@ float tokenize(unsigned int i, unsigned int stop) {
 		switch ((int)token[i].value) {// (int) to make gcc happy
 			case Sin:
 				token[i].value = sin(token[i + 1].value);
-				printf("%f\n", sin(token[i + 1].value));
 				break;
 			case Cos:
 				token[i].value = cos(token[i + 1].value);
