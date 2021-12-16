@@ -19,7 +19,8 @@ enum tokenoperator {
 	Sin,
 	Cos,
 	Tan,
-	Factorial
+	Fac,
+	Ran
 };
 
 struct token {
@@ -27,27 +28,32 @@ struct token {
 	float value; // this isnt the actuall value, typecast to float or enum tokentype
 };
 
+struct tokenlist {
+	unsigned int size;
+	struct token* data;
+};
+
 unsigned int textlen = 0;
 char *text;
 
-void printtoken(struct token * *token, unsigned int tokenlen) {
+void printtoken(struct tokenlist *tokenlist) {
 	unsigned int maxtokenlen;
-	if      (tokenlen < 10 ) maxtokenlen = 1;
-	else if (tokenlen < 100) maxtokenlen = 2;
+	if      (tokenlist->size < 10 ) maxtokenlen = 1;
+	else if (tokenlist->size < 100) maxtokenlen = 2;
 	else                     maxtokenlen = 3;
-	for (unsigned int i = 0; i < tokenlen; ++i) {
+	for (unsigned int i = 0; i < tokenlist->size; ++i) {
 		printf("Token %*d: ", maxtokenlen, i);
-		if ((*token)[i].type == Null) {
+		if (tokenlist->data[i].type == Null) {
 			printf("Null\n");
-		} else if ((*token)[i].type == Number) {
-			printf("Number: %f\n", (float)(*token)[i].value);
+		} else if (tokenlist->data[i].type == Number) {
+			printf("Number: %f\n", (float)tokenlist->data[i].value);
 		} else {
-			if ((*token)[i].type == Operator) {
+			if (tokenlist->data[i].type == Operator) {
 				printf("Operator: ");
 			} else {
 				printf("Function: ");
 			}
-			switch ((int)(*token)[i].value) { // (int) to make gcc happy
+			switch ((int)tokenlist->data[i].value) { // (int) to make gcc happy
 				case Add:
 					putchar('+');
 					break;
@@ -81,7 +87,7 @@ void printtoken(struct token * *token, unsigned int tokenlen) {
 					putchar('a'); 
 					putchar('n');
 					break;
-				case Factorial:
+				case Fac:
 					putchar('f'); 
 					putchar('a'); 
 					putchar('c');
@@ -96,10 +102,12 @@ void printtoken(struct token * *token, unsigned int tokenlen) {
 	}
 }
 
-float tokenize(unsigned int i, unsigned int stop) {
+struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 
-	unsigned int tokenlen = 0;
-	struct token *token = token = malloc(1 * sizeof(struct token));
+	struct tokenlist temptoken;
+	struct tokenlist token;
+	token.data = malloc(1 * sizeof(struct token));
+	token.size = 0;
 
 	float exponent;
 	unsigned int m = 0;
@@ -111,28 +119,29 @@ float tokenize(unsigned int i, unsigned int stop) {
 
 		// printf("Char %d: %c\n", i, text[i]);
 
+		// TODO switch statement
 		if (text[i] == '+') {
-			token[tokenlen].type  = Operator;
-			token[tokenlen].value = Add; 
+			token.data[token.size].type  = Operator;
+			token.data[token.size].value = Add; 
 		} else if (text[i] == '-') {
-			token[tokenlen].type  = Operator;
-			token[tokenlen].value = Min; 
+			token.data[token.size].type  = Operator;
+			token.data[token.size].value = Min; 
 		} else if (text[i] == '*') {
-			token[tokenlen].type  = Operator;
-			token[tokenlen].value = Mul; 
+			token.data[token.size].type  = Operator;
+			token.data[token.size].value = Mul; 
 		} else if (text[i] == '/') {
-			token[tokenlen].type  = Operator;
-			token[tokenlen].value = Div; 
+			token.data[token.size].type  = Operator;
+			token.data[token.size].value = Div; 
 		} else if (text[i] == '%') {
-			token[tokenlen].type  = Operator;
-			token[tokenlen].value = Mod; 
+			token.data[token.size].type  = Operator;
+			token.data[token.size].value = Mod; 
 		} else if (text[i] == '^') {
-			token[tokenlen].type  = Operator;
-			token[tokenlen].value = Exp; 
+			token.data[token.size].type  = Operator;
+			token.data[token.size].value = Exp; 
 		} else if ((text[i] >= '0' && text[i] <= '9') || text[i] == '.') { // if digit
 
-			token[tokenlen].type  = Number;
-			token[tokenlen].value = 0;
+			token.data[token.size].type  = Number;
+			token.data[token.size].value = 0;
 
 			if (text[i] == '.') goto tokenizedecimalplace;
 			
@@ -141,7 +150,7 @@ float tokenize(unsigned int i, unsigned int stop) {
 			
 			exponent = 1;
 			while (i < stop && text[i] >= '0' && text[i] <= '9') {
-				token[tokenlen].value += (text[i] - '0') * exponent;
+				token.data[token.size].value += (text[i] - '0') * exponent;
 				--i;
 				exponent *= 10;
 			}
@@ -162,7 +171,7 @@ float tokenize(unsigned int i, unsigned int stop) {
 						++i;
 						continue;
 					}
-					token[tokenlen].value = (float)(token[tokenlen].value) + (float)((text[i] - '0') * exponent);
+					token.data[token.size].value = (float)(token.data[token.size].value) + (float)((text[i] - '0') * exponent); // TODO +=
 					++i;
 					exponent *= 0.1;
 				};
@@ -186,8 +195,9 @@ float tokenize(unsigned int i, unsigned int stop) {
 				++i;
 			}
 			--i;
-			token[tokenlen].type  = Number;
-			token[tokenlen].value = tokenize(bracketstart, i);
+			temptoken = tokenize(bracketstart, i);
+			// token.data[token.size].type  = Number;
+			// token.data[token.size].value = ;
 			
 		} else if (text[i] == ')') {
 			printf("Warn: Too many ')', ignoring\n");
@@ -196,22 +206,22 @@ float tokenize(unsigned int i, unsigned int stop) {
 			if (text[i] != 'i' || i > stop) goto tokenizeinvalidsymbol;
 			i++;
 			if (text[i] != 'n' || i > stop) goto tokenizeinvalidsymbol;
-			token[tokenlen].type  = Function;
-			token[tokenlen].value = Sin;
+			token.data[token.size].type  = Function;
+			token.data[token.size].value = Sin;
 		} else if (text[i] == 'c') {
 			i++;
 			if (text[i] != 'o' || i > stop) goto tokenizeinvalidsymbol;
 			i++;
 			if (text[i] != 's' || i > stop) goto tokenizeinvalidsymbol;
-			token[tokenlen].type  = Function;
-			token[tokenlen].value = Cos;
+			token.data[token.size].type  = Function;
+			token.data[token.size].value = Cos;
 		} else if (text[i] == 't') {
 			i++;
 			if (text[i] != 'a' || i > stop) goto tokenizeinvalidsymbol;
 			i++;
 			if (text[i] != 'n' || i > stop) goto tokenizeinvalidsymbol;
-			token[tokenlen].type  = Function;
-			token[tokenlen].value = Tan;
+			token.data[token.size].type  = Function;
+			token.data[token.size].value = Tan;
 		} else if (text[i] == 'f') {
 			i++;
 			if (text[i] != 'a' || i > stop) goto tokenizeinvalidsymbol;
@@ -219,158 +229,133 @@ float tokenize(unsigned int i, unsigned int stop) {
 			if (text[i] != 'c' || i > stop) goto tokenizeinvalidsymbol;
 			i++;
 			if (text[i] != 't' || i > stop) goto tokenizeinvalidsymbol;
-			token[tokenlen].type  = Function;
-			token[tokenlen].value = Factorial;
+			token.data[token.size].type  = Function;
+			token.data[token.size].value = Fac;
 		} else if (text[i] == '!') {
-			token[tokenlen].type  = Function;
-			token[tokenlen].value = Factorial;
+			token.data[token.size].type  = Function;
+			token.data[token.size].value = Fac;
+		} else if (text[i] == 'r') {
+			i++;
+			if (text[i] != 'a' || i > stop) goto tokenizeinvalidsymbol;
+			i++;
+			if (text[i] != 'n' || i > stop) goto tokenizeinvalidsymbol;
+			token.data[token.size].type  = Function;
+			token.data[token.size].value = Ran;
+		} else if (text[i] == ',') {
+			// a lazy way to make lists lmao
 		} else { tokenizeinvalidsymbol:
 			printf("Warn: Invalid symbol, ignoring\n");
 			++i;
 			continue;
 		}
 		
-		++tokenlen;
-		token = realloc(token, (1 + tokenlen) * sizeof(struct token));
+		++token.size;
+		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
 		++i;
 		
 	}
 	
 	// Time to calculate (with bodmas) functions, ^, %, *, /, +, -
-	printtoken(&token, tokenlen);
+	printtoken(&token);
 
 	//find sin, cos, tan (functions)
-	for (i = 0; i < tokenlen; ++i) {
-		if (token[i].type != Function) continue;
-		if (i == tokenlen) {
-			printf("Error: Expected number not nothing \n"); return 0;
+	for (i = 0; i < token.size; ++i) {
+		if (token.data[i].type != Function) continue;
+		if (i == token.size) {
+			printf("Error: Expected number not nothing \n"); return token;
 		}
-		if (token[i + 1].type != Number) {
-			printf("Error: Expected number not operator\n"); return 0;	
+		if (token.data[i + 1].type != Number) {
+			printf("Error: Expected number not operator\n"); return token;	
 		}
-		switch ((int)token[i].value) {// (int) to make gcc happy
+		switch ((int)token.data[i].value) {// (int) to make gcc happy
 			case Sin:
-				token[i].value = sin(token[i + 1].value);
+				token.data[i].value = sin(token.data[i + 1].value);
 				break;
 			case Cos:
-				token[i].value = cos(token[i + 1].value);
+				token.data[i].value = cos(token.data[i + 1].value);
 				break;
 			case Tan:
-				token[i].value = tan(token[i + 1].value);
+				token.data[i].value = tan(token.data[i + 1].value);
 				break;
-			case Factorial:
-				token[i].value = 1;
-				for (m = 1; m < token[i + 1].value; ++m) {
-					token[i].value *= m;
+			case Fac:
+				token.data[i].value = 1;
+				for (m = 1; m < token.data[i + 1].value; ++m) {
+					token.data[i].value *= m;
 				}
 				break;
 			default:
 				printf("Error: Unknown function (code is broken)");
 		}	
-		token[i].type = Number;	
-		for (m = i + 1; m < tokenlen; ++m) { //todo convert x++ ++X TODO
-			token[m] = token[m + 1];
+		token.data[i].type = Number;	
+		for (m = i + 1; m < token.size; ++m) { //todo convert x++ ++X TODO
+			token.data[m] = token.data[m + 1];
 		}
-		tokenlen -= 1;
-		i -= 1;
-		token = realloc(token, (tokenlen + 1) * sizeof(struct token));
+		--token.size;
+		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
+		--i;
 	}
 
-	//find ^
-	for (i = 0; i < tokenlen; ++i) {
-		if (token[i].type != Operator) continue;
-		if (token[i].value != Exp) continue;
-		if (i == 0 || i == tokenlen) {
-			printf("Error: Expected number not nothing \n"); return 0;
-		}
-		if (token[i - 1].type != Number || token[i + 1].type != Number) {
-			printf("Error: Expected number not operator\n"); return 0;	
-		}
-		token[i - 1].value = pow(token[i - 1].value, token[i + 1].value);
-		for (m = i; m < tokenlen; ++m) { //todo convert x++ ++X TODO
-			token[m] = token[m + 2];
-		}
-		tokenlen -= 2;
-		i -= 2;
-		token = realloc(token, (tokenlen + 1) * sizeof(struct token));
-	}
-
-	//find %
-	for (i = 0; i < tokenlen; ++i) {
-		if (token[i].type != Operator) continue;
-		if (token[i].value != Mod) continue;
-		if (i == 0 || i == tokenlen) {
-			printf("Error: Expected number not nothing \n"); return 0;
-		}
-		if (token[i - 1].type != Number || token[i + 1].type != Number) {
-			printf("Error: Expected number not operator\n"); return 0;	
-		}
-		token[i - 1].value = fmod(token[i - 1].value, token[i + 1].value);
-		for (m = i; m < tokenlen; ++m) { //todo convert x++ ++X TODO
-			token[m] = token[m + 2];
-		}
-		tokenlen -= 2;
-		i -= 2;
-		token = realloc(token, (tokenlen + 1) * sizeof(struct token));
-	}
+	// TODO reimpement % and /
 
 	//find * /
-	for (i = 0; i < tokenlen; ++i) {
-		if (token[i].type != Operator) continue;
-		if (token[i].value != Mul && token[i].value != Div) continue;
-		if (i == 0 || i == tokenlen) {
-			printf("Error: Expected number not nothing \n"); return 0;
+	for (i = 0; i < token.size; ++i) {
+		if (token.data[i].type != Operator) continue;
+		if (token.data[i].value != Mul && token.data[i].value != Div) continue;
+		if (i == 0 || i == token.size) {
+			printf("Error: Expected number not nothing \n"); return token;
 		}
-		if (token[i - 1].type != Number || token[i + 1].type != Number) {
-			printf("Error: Expected number not operator\n"); return 0;	
+		if (token.data[i - 1].type != Number || token.data[i + 1].type != Number) {
+			printf("Error: Expected number not operator\n"); return token;	
 		}
-		if (token[i].value == Mul)
-			token[i - 1].value = token[i - 1].value * token[i + 1].value;
+		if (token.data[i].value == Mul)
+			token.data[i - 1].value = token.data[i - 1].value * token.data[i + 1].value;
 		else
-			token[i - 1].value = token[i - 1].value / token[i + 1].value;
-		for (m = i; m < tokenlen; ++m) { //todo convert x++ ++X TODO
-			token[m] = token[m + 2];
+			token.data[i - 1].value = token.data[i - 1].value / token.data[i + 1].value;
+		for (m = i; m < token.size; ++m) {
+			token.data[m] = token.data[m + 2];
 		}
-		tokenlen -= 2;
+		token.size -= 2;
+		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
 		i -= 2;
-		token = realloc(token, (tokenlen + 1) * sizeof(struct token));
 	}
 
 	//find + -
-	for (i = 0; i < tokenlen; ++i) {
-		if (token[i].type != Operator) continue;
-		if (token[i].value != Add && token[i].value != Min) continue;
-		if (i == 0 || i == tokenlen) {
-			printf("Error: Expected number not nothing \n"); return 0;
+	for (i = 0; i < token.size; ++i) {
+		if (token.data[i].type != Operator) continue;
+		if (token.data[i].value != Add && token.data[i].value != Min) continue;
+		if (i == 0 || i == token.size) {
+			printf("Error: Expected number not nothing \n"); return token;
 		}
-		if (token[i - 1].type != Number || token[i + 1].type != Number) {
-			printf("Error: Expected number not operator\n"); return 0;	
+		if (token.data[i - 1].type != Number || token.data[i + 1].type != Number) {
+			printf("Error: Expected number not operator\n"); return token;	
 		}
-		if (token[i].value == Add)
-			token[i - 1].value = token[i - 1].value + token[i + 1].value;
+		if (token.data[i].value == Add)
+			token.data[i - 1].value = token.data[i - 1].value + token.data[i + 1].value;
 		else
-			token[i - 1].value = token[i - 1].value - token[i + 1].value;
-		for (m = i; m < tokenlen; ++m) { //todo convert x++ ++X TODO
-			token[m] = token[m + 2];
+			token.data[i - 1].value = token.data[i - 1].value - token.data[i + 1].value;
+		for (m = i; m < token.size; ++m) {
+			token.data[m] = token.data[m + 2];
 		}
-		tokenlen -= 2;
+		token.size -= 2;
+		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
 		i -= 2;
-		token = realloc(token, (tokenlen + 1) * sizeof(struct token));
 	}
 
 	//printtoken(&token, tokenlen);
 
 	// free & return
 	
-	if (tokenlen == 0) {
-		free(token);
-		return 0;
-	}
+	// if (tokenlen == 0) {
+	// 	free(token);
+	// 	return 0;
+	// }
 
-	exponent = token[0].value;
-	free(token);
-	printf("%f\n", exponent);
-	return exponent;
+	// exponent = token[0].value;
+	// free(token);
+	// printf("%f\n", exponent);
+	// return exponent;
+
+	return token;
 
 }
 
@@ -439,7 +424,7 @@ int main(int argc, char *argv[]) {
 	// tokenize time :P
 	
 
-	printf("Result: %f\n", tokenize(0, textlen));
+	printf("Result: %f\n", tokenize(0, textlen).data[0].value);
 
 	// print tokens
 
