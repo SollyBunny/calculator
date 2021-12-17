@@ -3,6 +3,9 @@
 #include <time.h>
 #include <math.h>
 
+#define TOLOWER(__c) ((__c >= 'A' && __c <= 'Z') ? __c - ('A' - 'a') : __c)
+
+typedef double decimal;
 
 enum tokentype {
 	Null,
@@ -14,7 +17,7 @@ enum tokentype {
 
 enum tokenoperator { // TODO fix names to make them nice :P
 	Add,
-	Min,
+	Sub,
 	Mul,
 	Div,
 	Mod,
@@ -22,18 +25,18 @@ enum tokenoperator { // TODO fix names to make them nice :P
 	Sin,
 	Cos,
 	Tan,
-	Fac,
-	Ran,
+	Factorial,
+	Random,
 	Range,
 	Sum,
-	Pro,
+	Product,
 	START,
 	STOP
 };
 
 union tokenvalue {
 	enum   tokenoperator  OP; // operator
-	float                 NV; // number value
+	decimal               NV; // number value
 	struct tokenlist     *LP; // list point
 	unsigned int          IV; // int value
 };
@@ -60,12 +63,13 @@ int rand() {
 // static struct tokenliststorage = malloc(1 * sizeof());
 
 void printtoken(struct tokenlist *tokenlist) {
+	printf("\x1b[1;96mPrint Token:\n");
 	unsigned int maxtokenlen;
 	if      (tokenlist->size < 10 ) maxtokenlen = 1;
 	else if (tokenlist->size < 100) maxtokenlen = 2;
 	else                     maxtokenlen = 3;
 	for (unsigned int i = 0; i < tokenlist->size; ++i) {
-		printf("Token %*d: ", maxtokenlen, i);
+		printf("\x1b[1;96m%*d:\x1b[0m ", maxtokenlen, i);
 		switch (tokenlist->data[i].type) {
 			case Null:
 				printf("Null\n");
@@ -82,7 +86,7 @@ void printtoken(struct tokenlist *tokenlist) {
 					case Add:
 						putchar('+');
 						break;
-					case Min:
+					case Sub:
 						putchar('-');
 						break;
 					case Mul:
@@ -121,7 +125,7 @@ void printtoken(struct tokenlist *tokenlist) {
 						putchar('a'); 
 						putchar('n');
 						break;
-					case Fac:
+					case Factorial:
 						putchar('f'); 
 						putchar('a'); 
 						putchar('c');
@@ -134,10 +138,13 @@ void printtoken(struct tokenlist *tokenlist) {
 						putchar('g');
 						putchar('e');
 						break;
-					case Ran:
+					case Random:
 						putchar('r');
 						putchar('a');
 						putchar('n');
+						putchar('d');
+						putchar('o');
+						putchar('m');
 						break;
 					case Sum:
 						putchar('s');
@@ -151,7 +158,7 @@ void printtoken(struct tokenlist *tokenlist) {
 				putchar('\n');
 				break;
 			default:
-				printf("UNKNOWN TYPE\n");
+				printf("\x1b[1;31mError:\x1b[0m Unknown type\n");
 				break;
 		}
 	}
@@ -164,8 +171,8 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 	token.data = malloc(1 * sizeof(struct token));
 	token.size = 0;
 
-	float exponent;
-	float exponentchange;
+	decimal exponent;
+	decimal exponentchange;
 	unsigned int m = 0;
 	unsigned int bracketcount;
 	unsigned int bracketstart;
@@ -181,7 +188,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			token.data[token.size].value.OP = Add; 
 		} else if (text[i] == '-') {
 			token.data[token.size].type     = Operator;
-			token.data[token.size].value.OP = Min; 
+			token.data[token.size].value.OP = Sub; 
 		} else if (text[i] == '*') {
 			token.data[token.size].type     = Operator;
 			token.data[token.size].value.OP = Mul; 
@@ -225,18 +232,38 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 
 			if (text[i] == '.') goto tokenizedecimalplace;
 			
-			while (i < stop && text[i] >= '0' && text[i] <= ('0' + exponentchange - 1)) ++i;// goto back of number to read back to front 
+			while (
+				(i < stop) && ((exponentchange == 16) ? (
+					(i < stop && text[i] >= '0' && text[i] <= '9') ||
+					(i < stop && text[i] >= 'a' && text[i] <= 'f')
+				) : (
+					(i < stop && text[i] >= '0' && text[i] <= '0' + exponentchange) 	
+				))
+			) {
+				++i;
+				printf("%d %c\n", i, text[i]);
+			};// goto back of number to read back to front 
 			--i;
 			
 			exponent = 1;
-			while (i < stop && text[i] >= '0' && text[i] <= ('0' + exponentchange - 1)) {
-				token.data[token.size].value.NV += (text[i] - '0') * exponent;
+			m = 0;
+			while (
+				i < stop && (
+					(text[i] >= '0' && text[i] <= '9') ||
+					(text[i] >= 'a' && text[i] <= 'f')
+				)
+			) {
+				if (text[i] >= 'a' && text[i] <= 'f') {
+					token.data[token.size].value.NV += (text[i] - 'a' + 10) * exponent;
+				} else {
+					token.data[token.size].value.NV += (text[i] - '0') * exponent;
+				}
 				--i;
 				exponent *= exponentchange;
+				++m;
 			}
 
-			while ((exponent /= exponentchange) != 1) ++i;
-			++i;
+			i += m;
 
 			if (text[i + 1] == '.') { 
 				++i;
@@ -247,7 +274,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 
 				while ((text[i] >= '0' && text[i] <= ('0' + exponentchange - 1)) || text[i] == '.') {
 					if (text[i] == '.') {
-						printf("Warn: too many decimal places, ignoring");
+						printf("\x1b[1;93mWarn:\x1b[0m too many decimal places, ignoring");
 						++i;
 						continue;
 					}
@@ -266,7 +293,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			bracketstart = i;
 			while (bracketcount != 0) {
 				if (i >= textlen) {
-					printf("Warn: Missing ')', assuming\n");
+					printf("\x1b[1;93mWarn:\x1b[0m Missing ')', assuming\n");
 					++i;
 					break;
 				}
@@ -285,7 +312,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			--token.size;
 			
 		} else if (text[i] == ')') {
-			printf("Warn: Too many ')', ignoring\n");
+			printf("\x1b[1;93mWarn:\x1b[0m Too many ')', ignoring\n");
 		} else if (text[i] == '[') {
 			
 			++i;
@@ -293,7 +320,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			bracketstart = i;
 			while (bracketcount != 0) {
 				if (i >= textlen) {
-					printf("Warn: Missing ']', assuming\n");
+					printf("\x1b[1;93mWarn:\x1b[0m Missing ']', assuming\n");
 					++i;
 					break;
 				}
@@ -318,7 +345,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			--token.size;
 			
 		} else if (text[i] == ']') {
-			printf("Warn: Too many ']', ignoring\n");	
+			printf("\x1b[1;93mWarn:\x1b[0m Too many ']', ignoring\n");	
 		} else if (text[i] == 's') {
 			i++;
 			if        (text[i] == 'u') {
@@ -353,10 +380,10 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			i++;
 			if (text[i] != 't' || i > stop) goto tokenizeinvalidsymbol;
 			token.data[token.size].type     = Function;
-			token.data[token.size].value.OP = Fac;
+			token.data[token.size].value.OP = Factorial;
 		} else if (text[i] == '!') {
 			token.data[token.size].type     = Function;
-			token.data[token.size].value.OP = Fac;
+			token.data[token.size].value.OP = Factorial;
 		} else if (text[i] == 'r') {
 			i++;
 			if (text[i] != 'a' || i > stop) goto tokenizeinvalidsymbol;
@@ -372,7 +399,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			} else {
 				i--;
 				token.data[token.size].type     = Function;
-				token.data[token.size].value.OP = Ran;
+				token.data[token.size].value.OP = Random;
 			}
 		} else if (text[i] == 'p') {
 			i++;
@@ -382,13 +409,13 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			i++;
 			if (text[i] != 'd' || i > stop) goto tokenizeinvalidsymbol;
 			token.data[token.size].type     = Function;
-			token.data[token.size].value.OP = Pro;
+			token.data[token.size].value.OP = Product;
 		} else if (text[i] == ',') {
 			// a lazy way to make lists lmao
 			++i;
 			continue;
 		} else { tokenizeinvalidsymbol:
-			printf("Warn: Invalid symbol '%c', ignoring\n", text[i]);
+			printf("\x1b[1;93mWarn:\x1b[0m Invalid symbol '%c', ignoring\n", text[i]);
 			++i;
 			continue;
 		}
@@ -402,58 +429,38 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 	printtoken(&token);
 	// Time to calculate (with bodmas) functions, ^, %, *, /, +, -
 
-	//find : (range)
-	for (i = 0; i < token.size; ++i) {
-	
-		if (
-			token.data[i].type     != Operator ||
-			token.data[i].value.NV != Exp
-		) continue;
-				
-		token.data[i - 1].value.NV = pow(token.data[i - 1].value.NV, token.data[i + 1].value.NV);
-		
-		for (m = i; m < token.size; ++m) {
-			token.data[m] = token.data[m + 2];
-		}
-		token.size -= 2;
-		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
-		i -= 2;
-		
-	}
-
 	//find sum (functions with list arg)
 	for (i = 0; i < token.size; ++i) { 
 		if (token.data[i].type != Function) continue;
 		if (i == token.size || token.data[i + 1].type != List) continue;
-		bracketcount = token.data[i].value.IV; // bracketcount = list size
+		token.data[i].type = Number;
+		bracketcount = token.data[i + 1].value.IV; // bracketcount = list size
 		switch (token.data[i].value.OP) {
 			case Sum:
 				token.data[i].value.NV = 0; 
-				for (m = 0; m < bracketcount; ++m) {
-					token.data[i - m].value.NV += token.data[i].value.NV;
+				for (m = 1; m < bracketcount + 2; ++m) {
 					++i;
+					token.data[i - m].value.NV += token.data[i].value.NV;
 				}
 				break;
-			case Pro:
+			case Product:
 				token.data[i].value.NV = 1; 
-				for (m = 0; m < bracketcount; ++m) {
+				for (m = 0; m < bracketcount + 2; ++m) {
 					token.data[i - m].value.NV *= token.data[i].value.NV;
 					++i;
 				}
 				break;
 			default:
-				printf("Error: Unknown function (code is broken)\n");
+				printf("\x1b[1;31mError:\x1b[0m Unknown function (code is broken)\n");
 		}
 
-		// free(&token.data[i + 1].value.LP); // crashes on free "double free or corruption (out)" idk y
-		
-		token.data[i].type = Number;	
 		for (m = i + 1; m < token.size; ++m) {
-			token.data[m] = token.data[m + bracketcount];
+			token.data[m - bracketcount - 1] = token.data[m];
 		}
-		--token.size;
-		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
-		--i;
+		token.size -= bracketcount + 1;
+		i          -= bracketcount + 1;
+		token.data = realloc(token.data, token.size * sizeof(struct token));
+		printtoken(&token);
 
 	}
 	
@@ -471,22 +478,22 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			case Tan:
 				token.data[i].value.NV = tan(token.data[i + 1].value.NV);
 				break;
-			case Fac:
+			case Factorial:
 				token.data[i].value.NV = 1;
 				for (m = 2; m <= token.data[i + 1].value.NV; ++m) {
 					token.data[i].value.NV *= m;
 				}
 				break;
-			case Ran:
+			case Random:
 				// handle 2 args
 				if (i == token.size - 1 || token.data[i + 2].type != Number) goto tokenizetypeerror;
 				// make sure we do random range: min -> max
 				if (token.data[i + 1].value.NV > token.data[i + 2].value.NV) {
-					token.data[i].value.NV = fmod((float)rand(), (
+					token.data[i].value.NV = fmod((decimal)rand(), (
 						token.data[i + 1].value.NV - token.data[i + 2].value.NV
 					) + token.data[i + 2].value.NV - 1) + 2;
 				} else {
-					token.data[i].value.NV = fmod((float)rand(), (
+					token.data[i].value.NV = fmod((decimal)rand(), (
 						token.data[i + 2].value.NV - token.data[i + 1].value.NV
 					) + token.data[i + 1].value.NV - 1) + 2;
 				}
@@ -500,45 +507,40 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 				// TODO
 				break;
 			case Range:
-				printf("FIX ME!\n");
-				return token;
-				// TODO lmao this doesnt work
 				// handle 2 args
 				if (i == token.size - 1 || token.data[i + 2].type != Number) goto tokenizetypeerror;
-				// make sure we do random range: min -> max
-				if (token.data[i + 2].value.NV > token.data[i + 1].value.NV) { 
+				// swap around args if 2 > 1
+				if (token.data[i + 2].value.NV < token.data[i + 1].value.NV) { 
 					m = token.data[i + 1].value.NV;
 					token.data[i + 1].value.NV = token.data[i + 2].value.NV;
 					token.data[i + 2].value.NV = m;
 				}
-				token.data[i].type = Number;	
+				token.data[i].type = List;
+				token.data[i].value.IV = (unsigned int)token.data[i + 2].value.NV - (unsigned int)token.data[i + 1].value.NV + 1;
 
-				token.size = token.size + (token.data[i + 2].value.NV - token.data[i + 1].value.NV) + 10;
-				token.data = realloc(token.data, token.size * sizeof(struct token));
+				token.size = token.size + token.data[i].value.IV - 2;
+				token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
 
-				for (m = i + 1; m < token.size; ++m) {
-					token.data[m] = token.data[m + (int)(token.data[i + 2].value.NV - token.data[i + 1].value.NV)];
+				for (m = token.size - 1; m > i + token.data[i].value.IV; --m) {
+					token.data[m] = token.data[m - token.data[i].value.IV + 2];
 				}
-				printf("AAAAA");
-				printtoken(&token);
-				return token;
-				// for (exponent = token.data[i + 1].value.NV; i < token.data[i + 2].value.NV; ++i) {
-					
-				// }
-				// TODO clean this mess up
-				
-				token.data = realloc(token.data, token.size * sizeof(struct token));
-				--token.size;
-				// TODO
-				break;
+
+				for (m = 2; m <= token.data[i].value.IV; ++m) {
+					token.data[i + m].type = Number;
+					token.data[i + m].value.NV = m + token.data[i + 1].value.NV - 1;
+				}
+
+				i += token.data[i].value.IV;
+				continue;	
+			
 			default:
-				printf("Error: Unknown function (code is broken)\n");
+				printf("\x1b[1;31mError:\x1b[0m Unknown function (code is broken)\n");
 		}
-		token.data[i].type = Number;	
+		token.data[i].type = Number;
 		for (m = i + 1; m < token.size; ++m) {
 			token.data[m] = token.data[m + 1];
 		}
-		
+
 		token.data = realloc(token.data, token.size * sizeof(struct token));
 		--token.size;
 		--i;
@@ -616,7 +618,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 				
 		if        (token.data[i].value.OP == Add) {
 			token.data[i - 1].value.NV = token.data[i - 1].value.NV + token.data[i + 1].value.NV;
-		} else if (token.data[i].value.OP == Min) {
+		} else if (token.data[i].value.OP == Sub) {
 			token.data[i - 1].value.NV = token.data[i - 1].value.NV - token.data[i + 1].value.NV;
 		} else continue;
 		
@@ -633,7 +635,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 	return token;
 
 	tokenizetypeerror:
-		printf("Error: Expected number\n"); 
+		printf("\x1b[1;31mError:\x1b[0m Expected number\n"); 
 		return token;
 
 }
@@ -656,14 +658,13 @@ int main(int argc, char *argv[]) {
 		// m is iterator for text (read m = 0)
 		for (unsigned int i = 0; i < textlen; ++i) {
 			if (temptext[i] != ' ' && temptext[i] != '\\') {
-				text[m] = temptext[i];
+				text[m] = TOLOWER(temptext[i]);
 				++m;
 			}
 		}
 		free(temptext);
 
 		goto tokenize;
-		//printf("Error: No argument!\n");
 	}
 
 	// get size of args
@@ -686,7 +687,7 @@ int main(int argc, char *argv[]) {
 		while (argv[i][m] != '\0') {
 			if (argv[i][m] != ' ' && argv[i][m] != '\\') {
 
-				text[j] = argv[i][m];
+				text[j] = TOLOWER(argv[i][m]);
 				++j;
 
 			}
@@ -697,15 +698,17 @@ int main(int argc, char *argv[]) {
 	}
 	
 	tokenize:
-	text[textlen] = '\0';
-	printf("'%s'\n", text);
 
-	// tokenize time :P
+		clock_t start;
+
+		start = clock();
+		decimal result =  tokenize(0, textlen).data[0].value.NV;
+		
+		printf("\x1b[1;96mResult:\x1b[0m %f\n\x1b[1;96mTime  :\x1b[0m %fs\n", 
+			result,
+			((double) (clock() - start)) / CLOCKS_PER_SEC
+		);
 	
-	printf("Result: %f\n", tokenize(0, textlen).data[0].value.NV);
-
-	// print tokens
-
 	return 0;
 	
 }
