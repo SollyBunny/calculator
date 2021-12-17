@@ -24,7 +24,8 @@ enum tokenoperator {
 	Tan,
 	Fac,
 	Ran,
-	Sum
+	Sum,
+	Pro
 };
 
 union tokenvalue {
@@ -68,7 +69,7 @@ void printtoken(struct tokenlist *tokenlist) {
 				printf("Number  : %f\n", tokenlist->data[i].value.NV);
 				break;
 			case List:
-				printf("List    : %d\n", tokenlist->data[i].value._INT);
+				printf("List    : %u\n", tokenlist->data[i].value._INT);
 				printtoken(tokenlist->data[i].value.LP);
 				break;
 			case Operator:
@@ -128,9 +129,9 @@ void printtoken(struct tokenlist *tokenlist) {
 						putchar('n');
 						break;
 					case Sum:
-						putchar('r');
-						putchar('a');
-						putchar('n');
+						putchar('s');
+						putchar('u');
+						putchar('m');
 						break;
 					default:
 						putchar('?');
@@ -273,11 +274,16 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			printf("Warn: Too many ']', ignoring\n");	
 		} else if (text[i] == 's') {
 			i++;
-			if (text[i] != 'i' || i > stop) goto tokenizeinvalidsymbol;
-			i++;
-			if (text[i] != 'n' || i > stop) goto tokenizeinvalidsymbol;
-			token.data[token.size].type     = Function;
-			token.data[token.size].value.OP = Sin;
+			if        (text[i] == 'u') {
+				i++;
+				if (text[i] != 'm' || i > stop) goto tokenizeinvalidsymbol;
+				token.data[token.size].value.OP = Sum;
+			} else if (text[i] == 'i') {
+				i++;
+				if (text[i] != 'n' || i > stop) goto tokenizeinvalidsymbol;
+				token.data[token.size].value.OP = Sin;
+			} else goto tokenizeinvalidsymbol;
+			token.data[token.size].type = Function;
 		} else if (text[i] == 'c') {
 			i++;
 			if (text[i] != 'o' || i > stop) goto tokenizeinvalidsymbol;
@@ -311,12 +317,21 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			if (text[i] != 'n' || i > stop) goto tokenizeinvalidsymbol;
 			token.data[token.size].type     = Function;
 			token.data[token.size].value.OP = Ran;
+		} else if (text[i] == 'p') {
+			i++;
+			if (text[i] != 'r' || i > stop) goto tokenizeinvalidsymbol;
+			i++;
+			if (text[i] != 'o' || i > stop) goto tokenizeinvalidsymbol;
+			i++;
+			if (text[i] != 'd' || i > stop) goto tokenizeinvalidsymbol;
+			token.data[token.size].type     = Function;
+			token.data[token.size].value.OP = Pro;
 		} else if (text[i] == ',') {
 			// a lazy way to make lists lmao
 			++i;
 			continue;
 		} else { tokenizeinvalidsymbol:
-			printf("Warn: Invalid symbol, ignoring\n");
+			printf("Warn: Invalid symbol '%c', ignoring\n", text[i]);
 			++i;
 			continue;
 		}
@@ -330,12 +345,47 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 	// Time to calculate (with bodmas) functions, ^, %, *, /, +, -
 	printtoken(&token);
 
-	// REMEMBER SUM NEEDS DIF IMPLEMENTATION DUE TO LIST ARG
+	//find sum (functions with list arg)
+	for (i = 0; i < token.size; ++i) { 
+		if (token.data[i].type != Function) continue;
+		if (i == token.size || token.data[i + 1].type != List) printf("C: %d\n", i);
+		
+		switch (token.data[i].value.OP) {
+			case Sum:
+				token.data[i].value.NV = 0; // optimize this TODO
+				for (m = 0; m < token.data[i + 1].value.LP->size; ++m) {
+					token.data[i].value.NV += token.data[i + 1].value.LP->data[m].value.NV;
+				}
+				break;
+			case Pro:
+				token.data[i].value.NV = 1; // optimize this TODO
+				for (m = 0; m < token.data[i + 1].value.LP->size; ++m) {
+					token.data[i].value.NV *= token.data[i + 1].value.LP->data[m].value.NV;
+				}
+				break;
+			default:
+				printf("Error: Unknown function (code is broken)");
+				continue;
+		}
+
+		// free(&token.data[i + 1].value.LP); // crashes on free "double free or corruption (out)" idk y
+		
+		token.data[i].type = Number;	
+		for (m = i + 1; m < token.size; ++m) {
+			token.data[m] = token.data[m + 1];
+		}
+		--token.size;
+		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
+		--i;
+
+	}
+	printf("AA\n");
+	printtoken(&token);
+	printf("BB\n");
 
 	//find sin, cos, tan (functions)
 	for (i = 0; i < token.size; ++i) { 
 		if (token.data[i].type != Function) continue;
-		if (i == token.size || token.data[i + 1].type != Number) goto tokenizetypeerror;
 		switch (token.data[i].value.OP) {
 			case Sin:
 				token.data[i].value.NV = sin(token.data[i + 1].value.NV);
@@ -365,12 +415,21 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 						token.data[i + 2].value.NV - token.data[i + 1].value.NV + 1
 					) + token.data[i + 1].value.NV);
 				}
+				// TODO clean this mess up
+				token.data[i].type = Number;	
+				for (m = i + 1; m < token.size; ++m) {
+					token.data[m] = token.data[m + 1];
+				}
+				--token.size;
+				token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
+				--i;
+				// TODO
 				break;
 			default:
 				printf("Error: Unknown function (code is broken)");
 		}
 		token.data[i].type = Number;	
-		for (m = i + 1; m < token.size; ++m) { //todo convert x++ ++X TODO
+		for (m = i + 1; m < token.size; ++m) {
 			token.data[m] = token.data[m + 1];
 		}
 		--token.size;
