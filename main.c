@@ -269,7 +269,6 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			temptoken = tokenize(bracketstart, i);
 			token.data[token.size].type     = List;
 			token.data[token.size].value.LP = &temptoken;
-
 		} else if (text[i] == ']') {
 			printf("Warn: Too many ']', ignoring\n");	
 		} else if (text[i] == 's') {
@@ -335,7 +334,8 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			++i;
 			continue;
 		}
-		
+
+	
 		++token.size;
 		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
 		++i;
@@ -519,6 +519,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 		
 	}
 
+
 	return token;
 
 	tokenizetypeerror:
@@ -591,7 +592,6 @@ int main(int argc, char *argv[]) {
 
 	// tokenize time :P
 	
-
 	printf("Result: %f\n", tokenize(0, textlen).data[0].value.NV);
 
 	// print tokens
