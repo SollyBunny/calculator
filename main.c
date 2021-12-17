@@ -635,7 +635,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 	return token;
 
 	tokenizetypeerror:
-		printf("\x1b[1;31mError:\x1b[0m Expected number\n"); 
+		printf("\x1b[1;31mError:\x1b[0m Expected number at token %u\n", i); 
 		return token;
 
 }
