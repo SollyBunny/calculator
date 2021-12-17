@@ -398,7 +398,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 				break;
 			case Fac:
 				token.data[i].value.NV = 1;
-				for (m = 1; m < token.data[i + 1].value.NV; ++m) {
+				for (m = 2; m <= token.data[i + 1].value.NV; ++m) {
 					token.data[i].value.NV *= m;
 				}
 				break;
