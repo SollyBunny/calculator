@@ -341,14 +341,14 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 		++i;
 		
 	}
-	
-	// Time to calculate (with bodmas) functions, ^, %, *, /, +, -
+
 	printtoken(&token);
+	// Time to calculate (with bodmas) functions, ^, %, *, /, +, -
 
 	//find sum (functions with list arg)
 	for (i = 0; i < token.size; ++i) { 
 		if (token.data[i].type != Function) continue;
-		if (i == token.size || token.data[i + 1].type != List) printf("C: %d\n", i);
+		if (i == token.size || token.data[i + 1].type != List) continue;
 		
 		switch (token.data[i].value.OP) {
 			case Sum:
@@ -364,8 +364,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 				}
 				break;
 			default:
-				printf("Error: Unknown function (code is broken)");
-				continue;
+				printf("Error: Unknown function (code is broken)\n");
 		}
 
 		// free(&token.data[i + 1].value.LP); // crashes on free "double free or corruption (out)" idk y
@@ -379,13 +378,11 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 		--i;
 
 	}
-	printf("AA\n");
-	printtoken(&token);
-	printf("BB\n");
-
+	
 	//find sin, cos, tan (functions)
 	for (i = 0; i < token.size; ++i) { 
 		if (token.data[i].type != Function) continue;
+		if (i == token.size || token.data[i + 1].type != Number) continue;
 		switch (token.data[i].value.OP) {
 			case Sin:
 				token.data[i].value.NV = sin(token.data[i + 1].value.NV);
@@ -426,7 +423,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 				// TODO
 				break;
 			default:
-				printf("Error: Unknown function (code is broken)");
+				printf("Error: Unknown function (code is broken)\n");
 		}
 		token.data[i].type = Number;	
 		for (m = i + 1; m < token.size; ++m) {
