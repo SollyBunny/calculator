@@ -25,14 +25,16 @@ enum tokenoperator {
 	Fac,
 	Ran,
 	Sum,
-	Pro
+	Pro,
+	START,
+	STOP
 };
 
 union tokenvalue {
 	enum   tokenoperator  OP; // operator
-	float                 NV; // number float
+	float                 NV; // number value
 	struct tokenlist     *LP; // list point
-	int                  _INT;
+	unsigned int          IV; // int value
 };
 
 struct token {
@@ -54,6 +56,8 @@ int rand() {
 	return _t.tv_nsec;
 }
 
+// static struct tokenliststorage = malloc(1 * sizeof());
+
 void printtoken(struct tokenlist *tokenlist) {
 	unsigned int maxtokenlen;
 	if      (tokenlist->size < 10 ) maxtokenlen = 1;
@@ -69,8 +73,7 @@ void printtoken(struct tokenlist *tokenlist) {
 				printf("Number  : %f\n", tokenlist->data[i].value.NV);
 				break;
 			case List:
-				printf("List    : %u\n", tokenlist->data[i].value._INT);
-				printtoken(tokenlist->data[i].value.LP);
+				printf("List    : %u\n", tokenlist->data[i].value.IV);
 				break;
 			case Operator:
 				printf("Operator: ");
@@ -145,10 +148,10 @@ void printtoken(struct tokenlist *tokenlist) {
 		}
 	}
 }
+	static struct tokenlist temptoken;
 
 struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 
-	struct tokenlist temptoken;
 	struct tokenlist token;
 	token.data = malloc(1 * sizeof(struct token));
 	token.size = 0;
@@ -251,7 +254,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 		} else if (text[i] == ')') {
 			printf("Warn: Too many ')', ignoring\n");
 		} else if (text[i] == '[') {
-
+			
 			++i;
 			bracketcount = 1;
 			bracketstart = i;
@@ -265,10 +268,22 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 				else if (text[i] == ']') --bracketcount;
 				++i;
 			}
-			--i;
-			temptoken = tokenize(bracketstart, i);
+
+			temptoken = tokenize(bracketstart, i - 1);
+
 			token.data[token.size].type     = List;
-			token.data[token.size].value.LP = &temptoken;
+			token.data[token.size].value.IV = temptoken.size;
+
+			++token.size;
+
+			token.data = realloc(token.data, (token.size + temptoken.size) * sizeof(struct token));
+			
+			for (m = 0; m < temptoken.size; ++m) {
+				token.data[token.size] = temptoken.data[m];
+				++token.size;
+			}
+			--token.size;
+			
 		} else if (text[i] == ']') {
 			printf("Warn: Too many ']', ignoring\n");	
 		} else if (text[i] == 's') {
@@ -335,7 +350,6 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 			continue;
 		}
 
-	
 		++token.size;
 		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
 		++i;
@@ -349,18 +363,20 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 	for (i = 0; i < token.size; ++i) { 
 		if (token.data[i].type != Function) continue;
 		if (i == token.size || token.data[i + 1].type != List) continue;
-		
+		bracketcount = token.data[i].value.IV; // bracketcount = list size
 		switch (token.data[i].value.OP) {
 			case Sum:
-				token.data[i].value.NV = 0; // optimize this TODO
-				for (m = 0; m < token.data[i + 1].value.LP->size; ++m) {
-					token.data[i].value.NV += token.data[i + 1].value.LP->data[m].value.NV;
+				token.data[im].NV = 0; 
+				for (m = 0; m < bracketcount; ++m) {
+					token.data[i - m].value.NV += token.data[i].value.NV;
+					++i;
 				}
 				break;
 			case Pro:
-				token.data[i].value.NV = 1; // optimize this TODO
-				for (m = 0; m < token.data[i + 1].value.LP->size; ++m) {
-					token.data[i].value.NV *= token.data[i + 1].value.LP->data[m].value.NV;
+				token.data[im].NV = 1; 
+				for (m = 0; m < bracketcount; ++m) {
+					token.data[i - m].value.NV *= token.data[i].value.NV;
+					++i;
 				}
 				break;
 			default:
@@ -371,7 +387,7 @@ struct tokenlist tokenize(unsigned int i, unsigned int stop) {
 		
 		token.data[i].type = Number;	
 		for (m = i + 1; m < token.size; ++m) {
-			token.data[m] = token.data[m + 1];
+			token.data[m] = token.data[m + bracketcount];
 		}
 		--token.size;
 		token.data = realloc(token.data, (token.size + 1) * sizeof(struct token));
